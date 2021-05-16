@@ -1,66 +1,37 @@
-public void testGetPageHieratchyAsXml() throws Exception
-   {
+public void testGetPageHierarchyAsXml() throws Exception {
+     makePages("PageOne", "PageOne.ChildOne", "PageTwo");
 
-     crawler.addPage(root, PathParser.parse("PageOne"));
-     crawler.addPage(root, PathParser.parse("PageOne.ChildOne"));
-     crawler.addPage(root, PathParser.parse("PageTwo"));
+     submitRequest("root", "type:pages");
 
-     request.setResource("root");
-     request.addInput("type", "pages");
-     Responder responder = new SerializedPageResponder();
-     SimpleResponse response =
-       (SimpleResponse) responder.makeResponse(
-          new FitNesseContext(root), request);
-     String xml = response.getContent();
-
-     assertEquals("text/xml", response.getContentType());
-     assertSubString("<name>PageOne</name>", xml);
-     assertSubString("<name>PageTwo</name>", xml);
-     assertSubString("<name>ChildOne</name>", xml);
-   }
-   public void testGetPageHieratchyAsXmlDoesntContainSymbolicLinks()
-   throws Exception {
-
-     WikiPage pageOne = crawler.addPage(root, PathParser.parse("PageOne"));
-     crawler.addPage(root, PathParser.parse("PageOne.ChildOne"));
-     crawler.addPage(root, PathParser.parse("PageTwo"));
-
-     PageData data = pageOne.getData();
-     WikiPageProperties properties = data.getProperties();
-     WikiPageProperty symLinks = properties.set(SymbolicPage.PROPERTY_NAME);
-     symLinks.set("SymPage", "PageTwo");
-     pageOne.commit(data);
-
-     request.setResource("root");
-     request.addInput("type", "pages");
-     Responder responder = new SerializedPageResponder();
-     SimpleResponse response =
-       (SimpleResponse) responder.makeResponse(
-          new FitNesseContext(root), request);
-     String xml = response.getContent();
-
-     assertEquals("text/xml", response.getContentType());
-     assertSubString("<name>PageOne</name>", xml);
-     assertSubString("<name>PageTwo</name>", xml);
-     assertSubString("<name>ChildOne</name>", xml);
-     assertNotSubString("SymPage", xml);
+     assertResponseIsXML();
+     assertResponseContains(
+       "<name>PageOne</name>", "<name>PageTwo</name>", "<name>ChildOne</name>"
+     );
    }
 
-   public void testGetDataAsHtml() throws Exception
-   {
-     crawler.addPage(root, PathParser.parse("TestPageOne"), "test page");
+   public void testSymbolicLinksAreNotInXmlPageHierarchy() throws Exception {
+     WikiPage page = makePage("PageOne");
+     makePages("PageOne.ChildOne", "PageTwo");
 
-     request.setResource("TestPageOne");
-     request.addInput("type", "data"); 
-     Responder responder = new SerializedPageResponder();
-     SimpleResponse response =
-       (SimpleResponse) responder.makeResponse(
-          new FitNesseContext(root), request);
-     String xml = response.getContent();
+     addLinkTo(page, "PageTwo", "SymPage");
 
-     assertEquals("text/xml", response.getContentType());
-     assertSubString("test page", xml);
-     assertSubString("<Test", xml);
+     submitRequest("root", "type:pages");
+
+     assertResponseIsXML();
+     assertResponseContains(
+       "<name>PageOne</name>", "<name>PageTwo</name>",
+              "<name>ChildOne</name>"
+     );
+     assertResponseDoesNotContain("SymPage");
+   } 
+
+   public void testGetDataAsXml() throws Exception {
+     makePageWithContent("TestPageOne", "test page");
+
+     submitRequest("TestPageOne", "type:data");
+
+     assertResponseIsXML();
+     assertResponseContains("test page", "<Test");
    }
 
 //Excerpt From
